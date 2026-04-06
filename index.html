@@ -40,6 +40,65 @@
             color: #555;
         }
 
+
+        
+        /* UML */
+        #viewport {
+            height: 1000px;
+            overflow: hidden;
+            cursor: grab;
+            position: relative;
+        }
+        #canvas {
+            user-select: none;
+            position: absolute;
+            width: 3000px;
+            height: 2000px;
+        }
+
+        .class {
+            position: absolute;
+            width: max-content; 
+            background: #940d41;
+            border: 1px solid #130009;
+            border-radius: 10px;
+            color: white;
+
+            font-family: 'Courier New', monospace;
+
+            overflow: hidden;
+        }
+        .class .title {
+            background: #610629;
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-top: 4px;
+
+            font-size: 20px;
+            font-weight: bold;
+            border-bottom: 1px solid #130009;
+        }
+        .class .section {
+            padding: 6px;
+            font-size: 14px;
+            border-bottom: 1px solid #130009;
+        }
+        .class .section:last-child {
+            border-bottom: none;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #940d41;
+            color: white;
+            border: 2px solid #610629;
+
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -91,7 +150,8 @@ To recreate the Unity reference scene, I defined the following requirements usin
 
 <h4>Must Have</h4>
 <ul>
-    <li>C++ project setup<ul>
+    <li>C++ project setup
+        <ul>
             <li>Window creation using GLFW</li>
             <li>Integration of Vulkan API</li>
             <li>Mathematics library (GLM) for math & transformations</li>
@@ -191,6 +251,120 @@ The Vulkan SDK is required to compile and run the application.
 <h2>2 | Engine Architecture & Systems</h2>
 
 <h3>2.1 | UML overview</h3>
+<p>I made it interactive! Try moving around by grabbing the blue canvas. Hover over the classes to understand their purpose.</p>
+<div id="viewport" style="background-color: powderblue;">
+  <div id="canvas">
+
+    <div class="class" style="left: 500px; top: 50px; " data-desc="Starting point of any C++ program. Creates an Editor instance and calls its run() method.">
+        <div class="title">main.cpp</div>
+    </div>
+
+    <div class="class" style="left: 500px; top: 300px; " data-desc="Handles rendering">
+        <div class="title">Editor</div>
+        <div class="section">- device<br>- swapChain</div>
+        <div class="section">+ beginFrame()<br>+ endFrame()</div>
+    </div>
+
+    <div class="class" style="left: 200px; top: 300px; " data-desc="Handles rendering">
+        <div class="title">EnginatorRenderer</div>
+        <div class="section">- device<br>- swapChain</div>
+        <div class="section">+ beginFrame()<br>+ endFrame()</div>
+    </div>
+
+
+
+
+
+    <svg id="arrows" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;">
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#22c55e" />
+            </marker>
+        </defs>
+    </svg>
+
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+
+    // ARROWS:
+    const arrowLayer = document.getElementById('arrows');
+
+    function connectClasses(classA, classB) {
+        const rectA = classA.getBoundingClientRect();
+        const rectB = classB.getBoundingClientRect();
+
+        const canvasRect = canvas.getBoundingClientRect();
+        const x1 = rectA.left + rectA.width / 2 - canvasRect.left;
+        const y1 = rectA.top + rectA.height / 2 - canvasRect.top;
+        const x2 = rectB.left + rectB.width / 2 - canvasRect.left;
+        const y2 = rectB.top + rectB.height / 2 - canvasRect.top;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1', x1);
+        line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2);
+        line.setAttribute('y2', y2);
+        line.setAttribute('stroke','#22c55e');
+        line.setAttribute('stroke-width','2');
+        line.setAttribute('marker-end','url(#arrowhead)');
+
+        arrowLayer.appendChild(line);
+        return line;
+    }
+
+    const classes = document.querySelectorAll('.class');
+    connectClasses(classes[1], classes[0]);
+    connectClasses(classes[1], classes[2]);
+
+    // Movement:
+    const viewport = document.getElementById('viewport');
+    let isDragging = false;
+    let startX, startY;
+    let offsetX = 0, offsetY = 0;
+
+    viewport.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX - offsetX;
+        startY = e.clientY - offsetY;
+        viewport.style.cursor = 'grabbing';
+    });
+    viewport.addEventListener('mouseup', () => {
+        isDragging = false;
+        viewport.style.cursor = 'grab';
+    });
+    viewport.addEventListener('mouseleave', () => {
+        isDragging = false;
+        viewport.style.cursor = 'grab';
+    });
+
+    viewport.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            offsetX = e.clientX - startX;
+            offsetY = e.clientY - startY;
+            canvas.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        }
+    });
+
+    // Tooltip:
+    const tooltip = document.getElementById('tooltip');
+    document.querySelectorAll('.class').forEach(el => {
+        el.addEventListener('mousemove', e => {
+            tooltip.style.display = 'block';
+            tooltip.style.left = e.clientX + 10 + 'px';
+            tooltip.style.top = e.clientY + 10 + 'px';
+            tooltip.innerText = el.getAttribute('data-desc');
+        });
+
+        el.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+        });
+    });
+</script>
 <h3>2.2 | Graphics pipeline</h3>
 <h4>2.2.1 | Vertex stage</h4>
 <h4>2.2.1 | Fragment stage</h4>
