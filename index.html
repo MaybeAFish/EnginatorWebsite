@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Development of a Vulkan 3D Rendering Environment with Lighting</title>
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: white;
+            color: #111;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: auto;
+            padding: 40px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            overflow-x: auto;
+            border-radius: 6px;
+        }
+
+        .media {
+            margin: 20px 0;
+            text-align: center;
+        }
+        img, video {
+            max-width: 100%;
+            border-radius: 6px;
+        }
+        .caption {
+            font-size: 14px;
+            color: #555;
+        }
+
+    </style>
+</head>
+<body>
+
+<h1>Development of a Vulkan 3D Rendering Environment with Real-Time Lighting</h1>
+
+<img src="images/rendering/5.png" alt="Engine" />
+
+<h2>1 | Introduction</h2>
+
+<h3>1.1 | Objective</h3>
+<p>
+The objective of this project is to develop a real-time 3D rendering environment using the Vulkan graphics API, with a primary focus on implementing dynamic lighting through point lights.
+</p>
+<p>
+The goal is to approximate the visual result shown in a reference scene created in Unity. This reference serves as a target for both visual quality and feature completeness, guiding the technical decisions made throughout the project.
+</p>
+<img src="images/goal.png" alt="Unity reference scene" />
+
+<h3>1.2 | Motivation and personal interest</h3>
+<p>
+Vulkan is a modern, low-level graphics API that provides explicit control over GPU operations. Unlike higher-level APIs such as OpenGL, Vulkan requires manual management of memory, synchronization and command submission. While this increases complexity, it also offers significantly more control and potentially big performance benefits.
+</p>
+<p>
+My primary motivation for choosing Vulkan is to gain a deeper understanding and become better in low-level graphics programming. Additionally, this project serves as an opportunity to improve my competency in C++, a language I am not yet fully comfortable with but want to master further.
+</p>
+<p>
+Another reason for selecting Vulkan is its growing relevance within the industry. Vulkan is designed with modern hardware in mind and is widely considered a futureproof API due to its performance focused design and cross platform support (Windows, Mac and Linux).
+</p>
+<p>
+Even Minecraft is planning on changing their 15 year old OpenGL based engine to be based on Vulkan instead (<a href="https://www.minecraft.net/en-us/article/another-step-towards-vibrant-visuals-for-java-edition" target="_blank">Minecraft, 2026</a>). 
+The potential performance and scalability benefits are becoming harder for big companies to ignore, making it worth the time to invest in learning this tech:
+</p>
+
+Comparisons
+<img src="images/goal.png" alt="Unity reference scene" />
+<img src="images/goal.png" alt="Unity reference scene" />
+<img src="images/goal.png" alt="Unity reference scene" />
+<img src="images/goal.png" alt="Unity reference scene" />
+
+<p>
+It is important to note, while Vulkan offers higher performance potential, incorrect usage can result in even worse performance due to its complex nature.
+</p>
+
+<h3>1.3 | Project Scope (MoSCoW)</h3>
+<p>
+To recreate the Unity reference scene, I defined the following requirements using the MoSCoW prioritization method:
+</p>
+
+<h4>Must Have</h4>
+<ul>
+    <li>C++ project setup<ul>
+            <li>Window creation using GLFW</li>
+            <li>Integration of Vulkan API</li>
+            <li>Mathematics library (GLM) for math & transformations</li>
+        </ul>
+    </li>
+    <li>Vulkan rendering pipeline
+        <ul>
+            <li>Vulkan instance and device setup</li>
+            <li>Swap chain</li>
+            <li>Render pass and framebuffers</li>
+            <li>Graphics pipeline creation</li>
+        </ul>
+    </li>
+    <li>Geometry
+        <ul>
+            <li>Vertex buffer</li>
+            <li>Index buffer</li>
+            <li>Model transformations (model, view, projection)</li>
+        </ul>
+    </li>
+    <li>Real-time lighting system
+        <ul>
+            <li>Uniform Buffer Object (UBO)</li>
+            <li>Point light implementation</li>
+            <li>Support for multiple dynamic light sources</li>
+        </ul>
+    </li>
+</ul>
+
+<p>
+If I have the time, I'd like to implement the following features as well:
+</p>
+
+<h4>Should Have</h4>
+<ul>
+    <li>Barycentric coordinates</li>
+    <li>Scene system (GameObjects)</li>
+    <li>Camera system
+        <ul>
+            <li>Orthographic/Perspective</li>
+            <li>Movement and rotation</li>
+        </ul>
+    </li>
+    <li>Multiple light types
+        <ul>
+            <li>Ambient light</li>
+            <li>Directional light</li>
+            <li>Spotlight</li>
+        </ul>
+    </li>
+    <li>Light colors</li>
+    <li>Model loader (.obj)
+        <ul>
+            <li>Vertex data</li>
+            <li>Index data</li>
+            <li>Colors</li>
+            <li>UV</li>
+        </ul>
+    </li>
+    <li>Material system</li>
+</ul>
+
+<h4>Could Have</h4>
+<ul>
+    <li>Editor interface
+        <ul>
+            <li>Project system</li>
+            <li>Gizmos</li>
+            <li>Scene hierarchy</li>
+            <li>Properties panel</li>
+        </ul>
+    </li>
+    <li>Performance metrics</li>
+    <li>Shadow mapping</li>
+</ul>
+
+<h3>1.4 | Project Setup</h3>
+
+<p>
+Vulkan cannot operate independently and requires additional libraries:
+</p>
+
+<ul>
+    <li><strong>GLFW</strong> – window creation and input handling</li>
+    <li><strong>GLM</strong> – mathematics (vectors and matrices)</li>
+</ul>
+
+<p>
+The Vulkan SDK is required to compile and run the application.
+</p>
+
+
+
+
+
+
+<h2>2 | Engine Architecture & Systems</h2>
+
+<h3>2.1 | UML overview</h3>
+<h3>2.2 | Graphics pipeline</h3>
+<h4>2.2.1 | Vertex stage</h4>
+<h4>2.2.1 | Fragment stage</h4>
+
+<h3>2.3 | Buffers and memory</h3>
+<p> BUFFER ========== A buffer is just a chunk of memory used to store data.</p>
+
+<h4>2.3.1 | Vertex buffers</h4>
+<h4>2.3.1 | Index buffers</h4>
+<h4>2.3.1 | Uniform buffers (UBOs)</h4>
+
+<h3>2.4 | Command buffers & queues</h3>
+<h3>2.5 | Swap chain & presentation</h3>
+<h3>2.6 | Transformations and matrices</h3>
+Model, view, projection
+
+<h3>2.7 | Shaders</h3>
+Vertex and fragment shaders
+
+result
+
+
+
+<h2>3 | Lighting System</h2>
+<h3>3.1 | Lighting in games</h3>
+<h3>3.2 | Ambient lighting</h3>
+<h3>3.2 | Directional lighting</h3>
+<h3>3.3 | Point lights</h3>
+
+<h3>3.4 | Multiple point lights</h3>
+<h3>3.5 | Performance considerations</h3>
+<h3>3.6 | Challenges & limitations</h3>
+
+
+
+
+<h2>4 | Conclusion</h2>
+<h3>4.1 | Reflection on development</h3>
+<h3>4.1 | Comparison with MoSCoW</h3>
+<h3>4.1 | Lessons learned</h3>
+<h3>4.1 | Future improvements</h3>
+I have a bunch of TODO:s put eveyrwhere in the code
+
+
+
+
+
+<h3>3.1 Window Creation</h3>
+<p>
+A window is created using GLFW, which acts as the surface for Vulkan rendering.
+</p>
+
+<div class="media">
+    <img src="images/window.png" alt="Window example">
+    <p class="caption">Basic GLFW window</p>
+</div>
+
+
+<h3>3.2 Vulkan Pipeline Overview</h3>
+<p>
+Unlike OpenGL, Vulkan does not execute commands immediately.
+Instead, commands are recorded into command buffers and submitted to GPU queues.
+</p>
+
+<ul>
+    <li>Command buffers store rendering instructions</li>
+    <li>Queues execute commands on the GPU</li>
+    <li>Swap chain handles image presentation</li>
+</ul>
+
+<h3>3.3 Drawing a Triangle</h3>
+<p>
+The first step in rendering is drawing a simple triangle using vertex buffers and shaders.
+</p>
+
+<div class="media">
+    <img src="images/triangle.png" alt="Triangle render">
+    <p class="caption">First rendered triangle</p>
+</div>
+
+<h3>3.4 Shader Example (GLSL)</h3>
+<p>
+Shaders are written in GLSL and compiled to SPIR-V before use.
+</p>
+
+<pre><code>
+// Vertex Shader (GLSL)
+#version 450
+
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 color;
+
+layout(location = 0) out vec3 fragColor;
+
+void main() {
+    gl_Position = vec4(position, 1.0);
+    fragColor = color;
+}
+</code></pre>
+
+
+gourard shading
+https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading-material
+
+
+
+<h2>4. Models and Transformations</h2>
+
+<p>
+A custom model system was implemented to support arbitrary vertex data.
+</p>
+
+<ul>
+    <li>Vertex buffers store geometry</li>
+    <li>Transformations applied via matrices</li>
+    <li>Supports position, rotation, and scale</li>
+</ul>
+
+<div class="media">
+    <img src="images/cube.png" alt="Cube render">
+    <p class="caption">Multicolored cube with transformations</p>
+</div>
+
+<h3>4.1 Example Transformation Code</h3>
+
+<pre><code>
+// Rotation example
+gameObject.transform.rotation.y += 0.01f;
+
+// Wrapped rotation
+gameObject.transform.rotation.y =
+    glm::mod(gameObject.transform.rotation.y, glm::two_pi&lt;float&gt;());
+</code></pre>
+
+<pre><code>
+void EnginatorModel::createIndexBuffers(const std::vector<uint32_t> &indices) {
+  indexCount = static_cast<uint32_t>(indices.size());
+  hasIndexBuffer = indexCount > 0;
+  assert(vertexCount >= 3 && "Vertex count must be at least 3");
+  VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
+  device_.createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                       vertexBuffer, vertexBufferMemory);
+
+  void *data;
+  vkMapMemory(device_.device(), vertexBufferMemory, 0, bufferSize, 0, &data);
+  memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+  vkUnmapMemory(device_.device(), vertexBufferMemory);
+}
+</code></pre>
+
+
+
+<h2>5. Camera System</h2>
+
+<p>
+A camera class was implemented to navigate through the 3D scene.
+</p>
+
+<ul>
+    <li>Perspective projection</li>
+    <li>Keyboard input movement</li>
+    <li>Applies transformations to the scene</li>
+</ul>
+
+<div class="media">
+    <video controls>
+        <source src="videos/camera.mp4" type="video/mp4">
+    </video>
+    <p class="caption">Camera movement demonstration</p>
+</div>
+
+
+<h2>6. Lighting (Planned)</h2>
+
+<p>
+Lighting will be implemented using per-fragment calculations.
+</p>
+
+<ul>
+    <li>Light position and direction</li>
+    <li>Surface shading</li>
+    <li>Multiple dynamic lights</li>
+</ul>
+
+<p>
+Future work includes shadow mapping techniques. 
+
+Ambient lighting assumes an object recieves a tiny bit of light from every direction
+
+Directional light 1 direction
+</p>
+
+
+<h2>7. Current Result</h2>
+
+<p>
+At this stage, the system supports:
+</p>
+
+<ul>
+    <li>3D object rendering</li>
+    <li>Multicolored cube</li>
+    <li>Perspective projection</li>
+    <li>Camera movement</li>
+    <li>Real-time transformations</li>
+</ul>
+
+
+<h2>8. Challenges</h2>
+
+<ul>
+    <li>Complex Vulkan setup</li>
+    <li>Swap chain recreation during window resize</li>
+    <li>Synchronization and command buffers</li>
+</ul>
+
+
+
+<!--   // auto projectionView =
+  //     frameInfo.camera.getProjection() * frameInfo.camera.getView();
+ -->
+
+<!-- Interactive UML. you can hover over shizzle to see what the class does -->
+
+<!--   // Descriptor sets that are shared more frequently should occupy earlier set
+  // numbers -->
+
+<h2>9. Conclusion</h2>
+
+<p>
+This project provided valuable insights into low-level graphics programming.
+Working with Vulkan significantly improved understanding of GPU pipelines, memory management, and rendering systems.
+</p>
+
+<p>
+Additionally, the project strengthened C++ knowledge, including pointers, destructors, and header file structures.
+</p>
+
+
+<ul>
+    <li>.obj (WaveFront) model loading</li>
+    <li>performance: staging buffers (cpu -> gpu, when its at the gpu calculating the data can be removed). also indices</li>
+    <!-- <li>shadow mapping: render the scene from the light's perspective to create a depth map, then use that depth map in the main render pass to determine shadowed areas</li> -->
+</ul>
+
+
+
+
+
+
+<ul>
+    <li>Better performance through low-level control</li>
+    <li>Multi-threaded command buffer recording</li>
+    <li>Explicit GPU memory management</li>
+    <li>Reusable command buffers</li>
+</ul>
+<p>👉 You don’t bind buffers/images directly to the pipeline
+👉 You bind a descriptor set that contains them</p>
+<p>Instead of this (OpenGL style):
+
+bind buffer A
+bind texture B
+bind buffer C
+draw
+
+Vulkan does:
+
+bind descriptor set (A + B + C together)
+draw</p>
+
+
+
+<!-- SOURCES -->
+Minecraft. (February 18, 2026). <i>Another step towards vibrant visuals for Java Edition</i>. https://www.minecraft.net/en-us/article/another-step-towards-vibrant-visuals-for-java-edition
+
+</body>
+</html>
