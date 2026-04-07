@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Development of a Vulkan 3D Rendering Environment with Lighting</title>
 
+	<link href="themes/prism.css" rel="stylesheet" />
+
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -231,21 +233,21 @@ If I have the time, I'd like to implement the following features as well:
 <h3>1.4 | Project Setup</h3>
 
 <p>
-Vulkan cannot operate independently and requires additional libraries:
+Vulkan cannot operate independently. It requires several supporting libraries to handle windowing, input and math operations.
 </p>
 
 <ul>
-    <li><strong>GLFW</strong> – window creation and input handling</li>
-    <li><strong>GLM</strong> – mathematics (vectors and matrices)</li>
+    <li><strong>GLFW</strong> for window creation and input handling (keyboard, mouse).</li>
+    <li><strong>GLM</strong> for math related stuff like vectors, matrices, and quaternion math utilities for 3D graphics transformations.</li>
 </ul>
 
 <p>
-The Vulkan SDK is required to compile and run the application.
+The recommended development environment is C++17 or later (<a href="https://vulkan-tutorial.com/" target="_blank">Vulkan Tutorial, n.d.</a>), with a compiler that supports Vulkan, such as MSVC (Microsoft Visual C++) on Windows or Clang/GCC on Linux. Before I could use Vulkan, I had to add the Vulkan SDK to my system's PATH so the project can locate its headers and libraries.
 </p>
 
-
-
-
+<p>
+Although many Vulkan projects use CMake to build the project, this project uses Visual Studio/MSBuild tasks for simplicity. I made a <code>tasks.json</code> configuration to build the project (ctrl + shift + B), and I made a <code>launch.json</code> configuration to run the built executable (F5). I did it this way so my project requires one less dependency (CMake).
+</p>
 
 
 <h2>2 | Engine Architecture & Systems</h2>
@@ -255,25 +257,66 @@ The Vulkan SDK is required to compile and run the application.
 <div id="viewport" style="background-color: powderblue;">
   <div id="canvas">
 
-    <div class="class" style="left: 500px; top: 50px; " data-desc="Starting point of any C++ program. Creates an Editor instance and calls its run() method.">
+<!-- Main -->
+    <div class="class" style="left: 500px; top: 50px;" data-desc="Starting point of any C++ program. Creates an Editor instance and calls its run() method.">
         <div class="title">main.cpp</div>
+        <div class="section">+ Editor editor</div>
+        <div class="section">+ editor.run()</div>
     </div>
 
-    <div class="class" style="left: 500px; top: 300px; " data-desc="Handles rendering">
+    <!-- Editor -->
+    <div class="class" style="left: 500px; top: 300px;" data-desc="Handles main loop, window, device, renderer, and game objects.">
         <div class="title">Editor</div>
-        <div class="section">- device<br>- swapChain</div>
-        <div class="section">+ beginFrame()<br>+ endFrame()</div>
+        <div class="section">
+          - EnginatorWindow enginatorWindow<br>
+          - EnginatorDevice enginatorDevice<br>
+          - EnginatorRenderer enginatorRenderer<br>
+          - std::unique_ptr&lt;EnginatorDescriptorPool&gt; globalPool<br>
+          - EnginatorGameObject::Map gameObjects
+        </div>
+        <div class="section">
+          + run()<br>
+          - loadGameObjects()
+        </div>
     </div>
 
-    <div class="class" style="left: 200px; top: 300px; " data-desc="Handles rendering">
+    <!-- Window / Device / Renderer -->
+    <div class="class" style="left: 250px; top: 550px;" data-desc="Represents a Vulkan window.">
+        <div class="title">EnginatorWindow</div>
+    </div>
+
+    <div class="class" style="left: 500px; top: 550px;" data-desc="Handles Vulkan device setup and memory management.">
+        <div class="title">EnginatorDevice</div>
+    </div>
+
+    <div class="class" style="left: 750px; top: 550px;" data-desc="Handles rendering pipeline, swap chain, and frame management.">
         <div class="title">EnginatorRenderer</div>
-        <div class="section">- device<br>- swapChain</div>
-        <div class="section">+ beginFrame()<br>+ endFrame()</div>
+    </div>
+
+    <!-- Game Objects / Systems -->
+    <div class="class" style="left: 500px; top: 800px;" data-desc="Represents objects in the game world.">
+        <div class="title">EnginatorGameObject</div>
+        <div class="section">
+          + Map gameObjects<br>
+          + createGameObject()
+        </div>
+    </div>
+
+    <div class="class" style="left: 250px; top: 1100px;" data-desc="Renders all objects using simple pipeline.">
+        <div class="title">SimpleRenderSystem</div>
+    </div>
+
+    <div class="class" style="left: 500px; top: 1100px;" data-desc="Manages and renders point lights.">
+        <div class="title">PointLightSystem</div>
+    </div>
+
+    <div class="class" style="left: 750px; top: 1100px;" data-desc="Handles camera view/projection.">
+        <div class="title">Camera</div>
     </div>
 
 
-
-
+<!-- AAAAAAAAAAAAAAAAAA -->
+<!-- Simple render system has a child of the pipeline -->
 
     <svg id="arrows" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;">
         <defs>
@@ -365,93 +408,205 @@ The Vulkan SDK is required to compile and run the application.
         });
     });
 </script>
-<h3>2.2 | Graphics pipeline</h3>
-<h4>2.2.1 | Vertex stage</h4>
-<h4>2.2.1 | Fragment stage</h4>
 
-<h3>2.3 | Buffers and memory</h3>
-<p> BUFFER ========== A buffer is just a chunk of memory used to store data.</p>
+<h3>2.2 | Main entry point</h3>
+When C++ code is compiled, it searches for a function named <code>main()</code> as the entry point of the program. This is usually where the execution starts. 
+My main.cpp file contains this main function, creating an instance of the Editor class and calling its run() method which contains the main loop of the application.
+<pre><code class="language-cpp">
+int main() {
+  Enginator::Editor editor{};
 
-<h4>2.3.1 | Vertex buffers</h4>
-<h4>2.3.1 | Index buffers</h4>
-<h4>2.3.1 | Uniform buffers (UBOs)</h4>
+  try {
+    editor.run();
+  } catch (const std::exception &e) {
+    return EXIT_FAILURE;
+  }
 
-<h3>2.4 | Command buffers & queues</h3>
-<h3>2.5 | Swap chain & presentation</h3>
-<h3>2.6 | Transformations and matrices</h3>
-Model, view, projection
+  return EXIT_SUCCESS;
+}
+</code></pre>
+<p>In c++, classes are defined by a header file (with the .hpp or .h extension) and implemented in a source file (with the .cpp extension). A header file works similar to a C# interface or abstract class, where the fields and member functions are declared:</p>
+<pre><code class="language-cpp">
+class Editor {
+public:
+  static constexpr int WIDTH = 1200;
+  static constexpr int HEIGHT = 800;
 
-<h3>2.7 | Shaders</h3>
-Vertex and fragment shaders
+  Editor(); // Constructor
+  ~Editor(); // Destructor, called when the object is destroyed, used for cleaning up resources
 
-result
+  void run();
 
+private:
+  void loadGameObjects();
 
+  EnginatorWindow enginatorWindow{WIDTH, HEIGHT, "vulkan is hard"};
+  EnginatorDevice enginatorDevice{enginatorWindow};
+  EnginatorRenderer enginatorRenderer{enginatorWindow, enginatorDevice};
 
-<h2>3 | Lighting System</h2>
-<h3>3.1 | Lighting in games</h3>
-<h3>3.2 | Ambient lighting</h3>
-<h3>3.2 | Directional lighting</h3>
-<h3>3.3 | Point lights</h3>
+  // Order of declarations matter. Pool needs to be destroyed before  device
+  std::unique_ptr<EnginatorDescriptorPool> globalPool{};
+  EnginatorGameObject::Map gameObjects;
+};
+</code></pre>
+<p>The editor has an instance of an EnginatorWindow, which manages an instance of a GLFWwindow and its events.</p>
+<pre><code class="language-cpp">
+void Editor::run() {
+    while (!glfwWindowShouldClose(enginatorWindow.window())) {
+        glfwPollEvents();
+        // This is basically the main loop of the application where the render system and update loops will be located
+    }
+}
+</code></pre>
+<p>The Editor class is not only responsible for the window, but also for holding and managing the renderer, which acts as a coordinator of the entire graphics pipeline.</p>
 
-<h3>3.4 | Multiple point lights</h3>
-<h3>3.5 | Performance considerations</h3>
-<h3>3.6 | Challenges & limitations</h3>
-
-
-
-
-<h2>4 | Conclusion</h2>
-<h3>4.1 | Reflection on development</h3>
-<h3>4.1 | Comparison with MoSCoW</h3>
-<h3>4.1 | Lessons learned</h3>
-<h3>4.1 | Future improvements</h3>
-I have a bunch of TODO:s put eveyrwhere in the code
-
-
-
-
-
-<h3>3.1 Window Creation</h3>
+<h3>2.3 | Graphics pipeline</h3>
 <p>
-A window is created using GLFW, which acts as the surface for Vulkan rendering.
+A graphics pipeline is a sequence of steps that transforms 3D model data (vertices) into a 2D image (pixels) on a screen (<a href="https://developers.meta.com/horizon/design/design-graphic-rendering-pipeline/" target="_blank">Meta, 2026</a>).
 </p>
 
+<h4>2.3.1 | This project's pipeline</h4>
+<p>Vulkan's graphics pipeline consists of the following stages:</p>
 <div class="media">
-    <img src="images/window.png" alt="Window example">
-    <p class="caption">Basic GLFW window</p>
+    <img src="images/pipeline.png" alt="Vulkan Pipeline">
+    <p class="caption">(Brendan Galea (1), 2020)</p>
 </div>
-
-
-<h3>3.2 Vulkan Pipeline Overview</h3>
-<p>
-Unlike OpenGL, Vulkan does not execute commands immediately.
-Instead, commands are recorded into command buffers and submitted to GPU queues.
-</p>
-
+<p>Basically:</p>
 <ul>
-    <li>Command buffers store rendering instructions</li>
-    <li>Queues execute commands on the GPU</li>
-    <li>Swap chain handles image presentation</li>
+    <li><strong>Vertex/Index Buffer</strong>: stores the raw vertex and index data for the model. (A buffer is a chunk of memory used to store any data)</li>
+    <li><strong>Input Assembler</strong>: receives vertex data from the buffers and "assembles" it into primitives.</li>
+    <li><strong>Vertex Shader</strong>: transforms vertices using the model, view and projection matrices.</li>
+    <li><strong>Rasterization</strong>: converts primitives into fragments (potential pixels) and applies clipping and culling.</li>
+    <li><strong>Fragment Shader</strong>: calculates the color of each fragment, applying lighting, textures and other effects.</li>
+    <li><strong>Color Blending</strong>: combines the colors of overlapping fragments.</li>
+    <li><strong>Frame Buffer</strong>: stores the final rendered image before it is displayed on the screen.</li>
 </ul>
+<p>There are more stages, like the Tessellation or Geometry shaders stages but those are pretty advanced and not really relevant inside of my scope.</p>
 
-<h3>3.3 Drawing a Triangle</h3>
+<h4>2.3.2 | Enginator renderer</h4>
 <p>
-The first step in rendering is drawing a simple triangle using vertex buffers and shaders.
+The EnginatorRenderer acts as the coordinator of the rendering process. It does not execute pipeline stages itself, but controls when and how the GPU runs them by recording commands (e.g., draw these specific vertices or bind these textures) into "command buffers", which is information that will run through the pipeline.
 </p>
-
+<p>
+At the start of each frame, which is when the Editor calls the renderer's <code>beginFrame()</code> method, an available image is acquired from the "swap chain". This image (the "render target") will eventually be drawn on the screen near the end of the frame, but before being displayed we need to tell the GPU how to render the scene on to that image.
+</p>
+<pre><code class="language-cpp">
+auto result = enginatorSwapChain->acquireNextImage(&currentImageIndex);
+vkBeginCommandBuffer(commandBuffer, &beginInfo);
+</code></pre>
+<p>
+The benefit of using a swap chain (as opposed to just rendering directly to the screen) is that it allows for double or triple buffering, which is when multiple images are used to store upcoming frames. This can improve performance (because the GPU can already start working on one frame while the display is showing another) and reduce "visual artifacts" (like screen tearing or flickering). Instead of rendering directly to the screen, frames are rendered to these images and presented in sequence. This makes sure that only fully rendered frames are displayed.
+</p>
 <div class="media">
-    <img src="images/triangle.png" alt="Triangle render">
-    <p class="caption">First rendered triangle</p>
+    <img src="images/triplebuffer1.png" alt="No Triple Buffering">
+    <p class="caption">Without multiple buffers, the GPU often has to wait for the display to finish before rendering the next frame (Brendan Galea (2), 2020)</p>
 </div>
-
-<h3>3.4 Shader Example (GLSL)</h3>
+<div class="media">
+    <img src="images/triplebuffer2.png" alt="Triple Buffering">
+    <p class="caption">In this case, triple buffering is always providing the GPU with a frame to work on:(Brendan Galea (2), 2020)</p>
+</div>
 <p>
-Shaders are written in GLSL and compiled to SPIR-V before use.
+Next, a render pass (a collection of operations that demand the GPU how it should render the scene, like clearing the color or depth buffer or setting the viewport) is started. This step defines which framebuffer (the swap chain image) will be used and prepares the pipeline for drawing.
+</p>
+<pre><code class="language-cpp">
+vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
+                     VK_SUBPASS_CONTENTS_INLINE);
+vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+</code></pre>
+<p>
+During this render pass, draw commands are recorded. These commands will later trigger execution of the vertex and fragment stages on the GPU.
 </p>
 
-<pre><code>
-// Vertex Shader (GLSL)
+<p>
+After recording, <code>endFrame()</code> is called which submits the command buffer to the GPU and presents the final image to the screen:
+</p>
+<pre><code class="language-cpp">
+vkEndCommandBuffer(commandBuffer);
+enginatorSwapChain->submitCommandBuffers(&commandBuffer, &currentImageIndex);
+</code></pre>
+
+<p>
+If the window is resized, the swap chain must be recreated to match the new window sizes. The code would otherwise crash because the swap chain images would no longer match the window dimensions.
+</p>
+<pre><code class="language-cpp">
+if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || enginatorWindow.wasWindowResized()) {
+    enginatorWindow.resetWindowResizedFlag();
+    recreateSwapChain();
+}
+</code></pre>
+
+
+
+
+<h3>2.4 | Render System</h3>
+<p>
+The SimpleRenderSystem class is responsible for recording the actual draw commands that will be executed by the GPU. It defines how game objects are rendered, including which shaders to use, how to bind vertex data and how to pass transformation and lighting data to the GPU.
+</p>
+
+<pre><code class="language-cpp">
+class SimpleRenderSystem {
+public:
+  SimpleRenderSystem(EnginatorDevice &enginatorDevice, VkRenderPass renderPass,
+                     VkDescriptorSetLayout globalSetLayout);
+  ~SimpleRenderSystem();
+
+  void renderGameObjects(FrameInfo &frameInfo);
+
+private:
+  void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+  void createPipeline(VkRenderPass renderPass);
+
+  EnginatorDevice &enginatorDevice;
+
+  std::unique_ptr<EnginatorPipeline> enginatorPipeline;
+  VkPipelineLayout pipelineLayout;
+};
+</code></pre>
+
+<p>
+The render system creates a pipeline object while passing a vertex and fragment shader:
+</p>
+<pre><code class="language-cpp">
+enginatorPipeline = std::make_unique<EnginatorPipeline>(
+      enginatorDevice, "shaders/triangle.vert.spv", "shaders/triangle.frag.spv",
+      pipelineConfig);
+</code></pre>
+<p>
+Shaders are written in GLSL, but have to be compiled to SPIR-V before Vulkan can use them (the .spv extension). SPIR-V is a binary intermediate language for shaders, designed to be more efficient for the GPU to execute.
+</p>
+
+<p>This EnginatorPipeline class passes the shader code to the Vulkan API to create shader modules, which will be used in the future when draw commands are executed.</p>
+
+<pre><code class="language-cpp">
+auto vertCode = readFile(vertFilepath);
+auto fragCode = readFile(fragFilepath);
+
+createShaderModule(vertCode, &vertShaderModule);
+createShaderModule(fragCode, &fragShaderModule);
+</code></pre>
+
+<pre><code class="language-cpp">
+void EnginatorPipeline::createShaderModule(const std::vector<char> &code,
+                                           VkShaderModule *shaderModule) {
+  VkShaderModuleCreateInfo createInfo{};
+  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  createInfo.codeSize = code.size();
+  createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
+
+  if (vkCreateShaderModule(device.device(), &createInfo, nullptr,
+                           shaderModule) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create shader module!");
+  }
+}
+</code></pre>
+
+<!--  -->
+<p>
+The vertex shader is responsible for transforming the vertices from model space to clip space, and passing any necessary data to the fragment shader. In this example, the vertex shader takes in vertex positions and colors, applies a transformation to the positions, and passes the colors to the fragment shader.
+</p>
+
+<pre><code class="language-hlsl">
 #version 450
 
 layout(location = 0) in vec3 position;
@@ -465,137 +620,259 @@ void main() {
 }
 </code></pre>
 
+The fragment shader will for now force each fragment to be red
 
-gourard shading
-https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading-material
+<pre><code class="language-hlsl>">
+#version 450
 
+layout (location = 0) in vec3 fragColor;
+layout (location = 0) out vec4 outColor;
 
-
-<h2>4. Models and Transformations</h2>
-
-<p>
-A custom model system was implemented to support arbitrary vertex data.
-</p>
-
-<ul>
-    <li>Vertex buffers store geometry</li>
-    <li>Transformations applied via matrices</li>
-    <li>Supports position, rotation, and scale</li>
-</ul>
-
-<div class="media">
-    <img src="images/cube.png" alt="Cube render">
-    <p class="caption">Multicolored cube with transformations</p>
-</div>
-
-<h3>4.1 Example Transformation Code</h3>
-
-<pre><code>
-// Rotation example
-gameObject.transform.rotation.y += 0.01f;
-
-// Wrapped rotation
-gameObject.transform.rotation.y =
-    glm::mod(gameObject.transform.rotation.y, glm::two_pi&lt;float&gt;());
-</code></pre>
-
-<pre><code>
-void EnginatorModel::createIndexBuffers(const std::vector<uint32_t> &indices) {
-  indexCount = static_cast<uint32_t>(indices.size());
-  hasIndexBuffer = indexCount > 0;
-  assert(vertexCount >= 3 && "Vertex count must be at least 3");
-  VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
-  device_.createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                       vertexBuffer, vertexBufferMemory);
-
-  void *data;
-  vkMapMemory(device_.device(), vertexBufferMemory, 0, bufferSize, 0, &data);
-  memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-  vkUnmapMemory(device_.device(), vertexBufferMemory);
+void main() {
+  outColor = vec4(fragColor, 1.0);
 }
 </code></pre>
 
 
-
-<h2>5. Camera System</h2>
-
 <p>
-A camera class was implemented to navigate through the 3D scene.
+Shaders are written in GLSL which have to be compiled to SPIR-V before Vulkan can use them. SPIR-V is a binary intermediate language for shaders, designed to be more efficient for the GPU to execute.
 </p>
 
-<ul>
-    <li>Perspective projection</li>
-    <li>Keyboard input movement</li>
-    <li>Applies transformations to the scene</li>
-</ul>
+<p>
+When the renderGameObjects() method is called, the command buffer (that was previously made by the renderer) is passed to the GPU with instructions on how to render the game objects.
+</p>
+<pre><code class="language-cpp">
+void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
+  enginatorPipeline->bind(frameInfo.commandBuffer);
+
+  vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+                          VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+                          &frameInfo.globalDescriptorSet, 0, nullptr);
+
+  for (auto &keyValue : frameInfo.gameObjects) {
+    // Every game object simply has a model (which contains the vertex and index buffers) and a transform (which contains the position, rotation and scale of the object). 
+    // The render system iterates through all game objects and renders them one by one.
+
+    auto &gameObject = keyValue.second;
+    if (gameObject.model == nullptr)
+      continue;
+
+    SimplePushConstantData push{};
+    push.modelMatrix = gameObject.transform.mat4();
+    push.normalMatrix = gameObject.transform.normalMatrix();
+
+    // For each game object, transformation data is passed to the GPU using "push constants":
+    vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT |
+                           VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(SimplePushConstantData), &push);
+    // These push constants are a small amount of data that can be passed directly to the shaders without the need for a buffer. They are really great for frequently changing data, such as transformation matrices, that need to be updated for each draw call.
+
+    gameObject.model->bind(frameInfo.commandBuffer);
+    gameObject.model->draw(frameInfo.commandBuffer);
+  }
+</code></pre>
+
+<p>The bind() method is called to bind the model's vertex and index buffers to the command buffer:</p>
+<pre><code class="language-cpp">
+void EnginatorModel::bind(VkCommandBuffer commandBuffer) {
+  VkBuffer buffers[] = {vertexBuffer->getBuffer()};
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+
+  if (hasIndexBuffer) {
+    vkCmdBindIndexBuffer(
+        commandBuffer, indexBuffer->getBuffer(), 0,
+        VK_INDEX_TYPE_UINT32); // TODO this should porbably be 16 bit on small models
+  }
+}
+</code></pre>
+
+<p>The draw() method is called to execute the final drawing commands using its vertex and index buffers:</p>
+<pre><code class="language-cpp">
+void EnginatorModel::draw(VkCommandBuffer commandBuffer) {
+  if (hasIndexBuffer) {
+    vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+  } else {
+    vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
+  }
+}
+</code></pre>
+
+<p>When vkCmdDraw() or vkCmdDrawIndexed() is called with the correct information, we will finally be able to see something drawn on the screen.</p>
+
+
+<h3>2.5 | Drawing!</h3>
+
+<h3>2.5.1 | First triangle</h3>
+<p>All the ingredients are basically ready for use. I can create the first triangle by instantiating a game object in the Editor class with the following data:</p>
+
+<pre><code class="language-cpp">
+    std::vector<EnginatorModel::Vertex> triangleVertices{
+        {{-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {}},
+        {{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {}},
+        {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {}, {}},
+    };
+    std::vector<uint32_t> triangleIndices{0, 1, 2};
+
+    auto triangleModel = std::make_shared<EnginatorModel>(enginatorDevice, triangleVertices, triangleIndices);
+
+    auto triangleObject = EnginatorGameObject::createGameObject();
+    triangleObject.model = triangleModel;
+    gameObjects.emplace(triangleObject.getId(), std::move(triangleObject));
+</code></pre>
+
+<p>Which renders the following image:</p>
+<div class="media">
+    <img src="images/triangle.png" alt="Triangle render">
+    <p class="caption">First rendered triangle</p>
+</div>
+
+<p>This confirms that I was succesful in setting up the basic rendering pipeline. Getting through this part feels really good because every change from now on will be visually verifiable.</p>
+
+<h3>2.5.2 | Multicolored triangle</h3>
+<p>Barycentric coordinates are a way to represent a point inside a triangle as a weighted average of the triangle's vertices colors.</p>
+
+<p>This can easily be done in the fragment shader by setting outColor to the interpolated fragment color:</p>
+
+<pre><code class="language-hlsl>">
+#version 450
+
+layout (location = 0) in vec3 fragColor;
+layout (location = 0) out vec4 outColor;
+
+void main() {
+  outColor = vec4(fragColor, 1.0);
+}
+</code></pre>
 
 <div class="media">
-    <video controls>
-        <source src="videos/camera.mp4" type="video/mp4">
-    </video>
-    <p class="caption">Camera movement demonstration</p>
+    <img src="images/rendering/2.png" alt="Barycentric coords">
 </div>
 
 
-<h2>6. Lighting (Planned)</h2>
+<h3>2.5.3 | Cube</h3>
 
+To showcase the 3-dimensional capabilities of the engine, I'll create a cube whose vertices are updated in real time to simulate an animation:
+<pre><code class="language-cpp">
+gameObject.transform.rotation.y += 0.01f;
+gameObject.transform.rotation.x += 0.005f;
+</code></pre>
+<div class="media">
+    <video controls>
+        <source src="videos/2.mp4" type="video/mp4">
+    </video>
+</div>
+
+<h3>2.5.4 | Orthographic vs Perspective</h3>
+<p></p>
+
+
+<div class="media">
+    <video controls>
+        <source src="videos/3.mp4" type="video/mp4">
+    </video>
+</div>
+
+<h3>2.5.5 | Model loader</h3>
 <p>
-Lighting will be implemented using per-fragment calculations.
+I decided to use tinyobjloader to load .obj (WaveFront) files, which is a simple header only library for loading .obj models. It supports loading vertex data, index data, colors, UVs and normals.
 </p>
 
-<ul>
-    <li>Light position and direction</li>
-    <li>Surface shading</li>
-    <li>Multiple dynamic lights</li>
-</ul>
+<p>I only want to try and load the vertex and index data for now. All I have to do is extract it from an .obj file and put it in the model's vertex and index buffers.</p>
 
-<p>
-Future work includes shadow mapping techniques. 
+<p>I created the following method in the EnginatorModel class:</p>
 
+<pre><code class="language-cpp">
+void EnginatorModel::Builder::loadModel(const std::string &filepath) {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+  std::string warn, err;
+
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+                        filepath.c_str())) {
+    throw std::runtime_error(warn + err);
+  }
+
+  vertices.clear();
+  indices.clear();
+
+  std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+  for (const auto &shape : shapes) {
+    for (const auto &index : shape.mesh.indices) {
+      Vertex vertex{};
+
+      if (index.vertex_index >= 0) {
+        vertex.position = {attrib.vertices[3 * index.vertex_index + 0],
+                           attrib.vertices[3 * index.vertex_index + 1],
+                           attrib.vertices[3 * index.vertex_index + 2]};
+
+        if (!attrib.colors.empty()) {
+          vertex.color = {attrib.colors[3 * index.vertex_index + 0],
+                          attrib.colors[3 * index.vertex_index + 1],
+                          attrib.colors[3 * index.vertex_index + 2]};
+        } else {
+          vertex.color = {1.0f, 1.0f, 1.0f}; // fallback
+        }
+      }
+
+      // tinyobjloader can return duplicate vertices, so using an unordered map to only store unique vertices and their corresponding indices.
+      if (uniqueVertices.count(vertex) == 0) {
+        uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+        vertices.push_back(vertex);
+      }
+      indices.push_back(uniqueVertices[vertex]);
+    }
+  }
+}
+</code></pre>
+
+<p>I am now able to create models from .obj files like this:</p>
+<pre><code class="language-cpp">
+std::shared_ptr<EnginatorModel> cubeModel =
+    EnginatorModel::createModelFromFile(enginatorDevice,
+                                        "models/colored_cube.obj");
+auto gameObject = EnginatorGameObject::createGameObject();
+gameObject.model = cubeModel;
+gameObject.transform.translation = {0.f, 0.f, 2.5f};
+gameObject.transform.scale = {0.5f, 0.5f, 0.5f};
+gameObjects.emplace(gameObject.getId(), std::move(gameObject));
+</code></pre>
+
+<div class="media">
+    <img src="images/rendering/3.png" alt="ModelsA">
+</div>
+<div class="media">
+    <img src="images/rendering/4.png" alt="ModelsB">
+</div>
+
+
+<h2>3 | Lighting System</h2>
 Ambient lighting assumes an object recieves a tiny bit of light from every direction
-
-Directional light 1 direction
-</p>
-
-
-<h2>7. Current Result</h2>
-
 <p>
-At this stage, the system supports:
+Uniform buffers (UBOs) contain data that remains constant for many vertices or fragments, such as transformation matrices, camera parameters or lighting information. These can be used to reduce draw calls.
 </p>
+Directional light 1 direction
+<h3>3.1 | Lighting in games</h3>
+<h3>3.2 | Ambient lighting</h3>
+<h3>3.2 | Directional lighting</h3>
 
-<ul>
-    <li>3D object rendering</li>
-    <li>Multicolored cube</li>
-    <li>Perspective projection</li>
-    <li>Camera movement</li>
-    <li>Real-time transformations</li>
-</ul>
+gourard shading
+https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading-material
 
+by using the fragment shader instead, it is
 
-<h2>8. Challenges</h2>
+<h3>3.3 | Point lights</h3>
 
-<ul>
-    <li>Complex Vulkan setup</li>
-    <li>Swap chain recreation during window resize</li>
-    <li>Synchronization and command buffers</li>
-</ul>
+<h3>3.4 | Multiple point lights</h3>
+<h3>3.5 | Performance considerations</h3>
+<h3>3.6 | Challenges & limitations</h3>
 
 
 
-<!--   // auto projectionView =
-  //     frameInfo.camera.getProjection() * frameInfo.camera.getView();
- -->
 
-<!-- Interactive UML. you can hover over shizzle to see what the class does -->
-
-<!--   // Descriptor sets that are shared more frequently should occupy earlier set
-  // numbers -->
-
-<h2>9. Conclusion</h2>
-
+<h2>4 | Conclusion</h2>
 <p>
 This project provided valuable insights into low-level graphics programming.
 Working with Vulkan significantly improved understanding of GPU pipelines, memory management, and rendering systems.
@@ -604,19 +881,31 @@ Working with Vulkan significantly improved understanding of GPU pipelines, memor
 <p>
 Additionally, the project strengthened C++ knowledge, including pointers, destructors, and header file structures.
 </p>
+Reflection on development
 
+Comparison with MoSCoW
 
-<ul>
-    <li>.obj (WaveFront) model loading</li>
-    <li>performance: staging buffers (cpu -> gpu, when its at the gpu calculating the data can be removed). also indices</li>
+I have a bunch of TODO:s put eveyrwhere in the code
+
+What i would do differently if i were to start over
+
+after this project, i will continue trying to make shadows, raytrace lighting, textured models and materials
     <!-- <li>shadow mapping: render the scene from the light's perspective to create a depth map, then use that depth map in the main render pass to determine shadowed areas</li> -->
+
+challenges:
+<ul>
+    <li>Complex Vulkan setup</li>
+    <li>Swap chain recreation during window resize</li>
+    <li>Synchronization and command buffers</li>
 </ul>
 
 
-
-
-
-
+<h3>4.1 | Why Vulkan is better</h3>
+Online, you can quickly find a lot of people saying that Vulkan is more performant, but finding out why is challenging. While working on this project, I have identified several areas where Vulkan's design allows for better performance compared to higher-level APIs like OpenGL:
+<p>
+Unlike OpenGL, Vulkan does not execute commands immediately.
+Instead, commands are recorded into command buffers and submitted to GPU queues.
+</p>
 <ul>
     <li>Better performance through low-level control</li>
     <li>Multi-threaded command buffer recording</li>
@@ -626,7 +915,6 @@ Additionally, the project strengthened C++ knowledge, including pointers, destru
 <p>👉 You don’t bind buffers/images directly to the pipeline
 👉 You bind a descriptor set that contains them</p>
 <p>Instead of this (OpenGL style):
-
 bind buffer A
 bind texture B
 bind buffer C
@@ -639,8 +927,40 @@ draw</p>
 
 
 
+
+
+
+<h3>4.2 | Sources</h3>
+
+
+
+
 <!-- SOURCES -->
+Prism.js was used for syntax highlighting. Very useful. https://prismjs.com/download#themes=prism&languages=markup+css+clike+javascript+c+csharp+cpp+hlsl
+
 Minecraft. (February 18, 2026). <i>Another step towards vibrant visuals for Java Edition</i>. https://www.minecraft.net/en-us/article/another-step-towards-vibrant-visuals-for-java-edition
 
+Vulkan Tutorial. (n.d.). <i>Vulkan Tutorial: Introduction</i>. https://vulkan-tutorial.com/
+
+Meta Horizon. (January 29, 2026). <i>Graphics Rendering Pipeline</i>. https://developers.meta.com/horizon/design/design-graphic-rendering-pipeline/
+
+Brendan Galea (1). (November 20, 2020). <i>Graphics Pipeline Overview - Vulkan Game Engine Tutorial 02</i>. https://www.youtube.com/watch?v=_riranMmtvI
+
+Brendan Galea (2). (January 15, 2021). <i>Swap Chain Overview - Vulkan Game Engine Tutorial 05 part 1</i>. https://www.youtube.com/watch?v=IUYH74MqxOA
+
+
+<div class="media">
+    <img src="images/meme.png" alt="sadf">
+</div>
+
+<script src="prism.js"></script>
+<script>
+// Prism.languages.insertBefore('cpp', 'class-name', {
+//   'namespace-class': {
+//     pattern: /\b\w+::\w+/,
+//     alias: 'class-name'
+//   }
+// });
+</script>
 </body>
 </html>
