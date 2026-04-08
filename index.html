@@ -905,7 +905,7 @@ And boom:
 </div>
 
 <p>
-This works, but it's blocky. The lighting is only calculated at the vertices, so the pixels in between are just interpolating the vertex colors, which is not how lighting should work. 
+This works, but it's blocky. The lighting is only calculated at the vertices, so the pixels in between are just interpolating the vertex colors. 
 </p>
 
 <p>This means I have created flat shading:</p>
@@ -913,9 +913,13 @@ This works, but it's blocky. The lighting is only calculated at the vertices, so
     <img src="images/shading.png" alt="Flat shading">
     <p class="caption">(Blender Stack Exchange, 2021)</p>
 </div>
-
+<p>I funnily enough wanted to create this shading style for a PCG exercise so it looks more low-poly, but I couldn't figure out an easy way to do this with procedurally generated terrain:</p>
+<div class="media">
+    <img src="images/pcg.png" alt="PCG flat shading">
+    <p class="caption">(Its still bothering me)</p>
+</div>
 <p>
-This happened because I accidentally put the lighting calculations in the vertex shader. To fix this, I just moved them to the fragment shader, which creates per-pixel lighting instead:
+But this is not what I want for this project. This happened because I accidentally put the lighting calculations in the vertex shader. To fix this, I just moved them to the fragment shader, which creates per-pixel lighting instead:
 </p>
 
 <div class="media">
@@ -933,81 +937,87 @@ So I thought it'd be cool to use my directional lighting on it:
     <img src="images/rendering/8.png" alt="Nicky well render">
 </div>
 
-This looks very cool! In my, very honest, definitely NON-biased, opinion.
+This looks great! In my, very honest, definitely NON-biased, opinion.
 
 
+<h3>3.2 | Ambient lighting</h3>
+Ambient lighting assumes an object recieves a tiny bit of light from every direction.
 
+This is as easy as doing the following:
+<pre><code class="language-hlsl">
+const float ambientStrength = 0.1;
 
-<div class="media">
-    <img src="images/shading.png" alt="Gourard shading">
-</div>
+void main() {
+    // The same code
+    difference += ambientStrength;
 
-
-<h3>3.3 | Ambient lighting</h3>
-Ambient lighting assumes an object recieves a tiny bit of light from every direction
+    outColor = vec4(difference * fragColor, 1.0); // Also the same
+}
+</code></pre>
 
 <div class="media">
     <img src="images/rendering/6.png" alt="Second light">
 </div>
 
 
+<h3>3.3 | Point lights</h3>
+<p>
+Point Lighting simulates light emanating from a single point in all directions.
+</p>
+<p>
+This is not something i can just add to the shader, i will have to pass the light's position and color to the shader using a uniform buffer object (UBO), which is a way to pass data from the CPU to the GPU that remains constant for many draw calls. This allows me to have multiple point lights in the scene without having to update the shader for each light, as I can just update the UBO with the new light information.
+</p>
 
 
-
-<h3>3.4 | Point lights</h3>
-    <li>Point Lighting: Simulates light emanating from a single point in all directions.</li>
+result:
 
 
 <p>
-Uniform buffers (UBOs) contain data that remains constant for many vertices or fragments, such as transformation matrices, camera parameters or lighting information. These can be used to reduce draw calls.
+they worked weird with the floor of the well
 </p>
-Directional light 1 direction
 
 
-
-
-
-so i got them to work, but they worked weird with the floor of the well
 
 <div class="media">
     <img src="images/rendering/9.png" alt="Nicky well render">
 </div>
 
-The light would only work on the floor of the well if the light was underneath the well, which is not how point lights are supposed to work. The light should affect the floor regardless of its position, as long as it's within the light's radius.
+the normals were backwards, which is proven in the next image
 
 <div class="media">
     <img src="images/rendering/10.png" alt="Nicky well render">
 </div>
 
-I believe this is because the normals of the floor are facing downwards, which causes the lighting calculations to be incorrect. I will have to investigate this further and see if I can fix it by adjusting the normals or by implementing backface culling.
+Something else, the light isnt based on raytracing. it goes through walls and stuff
 
-Something else, the light isnt based on raytracing. it goes through walls and stuff, which is not how point lights are supposed to work. I will have to implement shadow mapping to fix this, which is a technique that allows for shadows to be cast by objects in the scene. This will involve rendering the scene from the perspective of the light source to create a depth map, and then using that depth map in the main render pass to determine which areas are in shadow.
+
+Multiple point lights:
 
 <h3>3.5 | Light color</h3>
-Changing the color of the light is deadass as easy as just multiplying the value
-
-<h3>3.6 | Multiple point lights</h3>
-<h3>3.7 | Performance considerations</h3>
+Changing the color of the light is deadass as easy as just multiplying the value with a color vector
 
 
+Final result
 <div class="media">
     <video controls>
         <source src="videos/4.mp4" type="video/mp4">
     </video>
 </div>
 
-The lights update dynamically
+I made the lights move to show it updates dynamically
 
-I find it interesting how darker coloured lights are less brighter despite having the same intensity, similar to real life
+I find it interesting how darker coloured lights are less brighter despite having the same intensity, similar to real life, this is i think because the light color is multiplied with the intensity, so a white light with an intensity of 1 will be brighter than a red light with the same intensity, because the red light's color is (1, 0, 0) while the white light's color is (1, 1, 1).
+
+i need to check first
 
 <h2>4 | Conclusion</h2>
 <p>
 This project provided valuable insights into low-level graphics programming.
-Working with Vulkan significantly improved understanding of GPU pipelines, memory management, and rendering systems.
+Using and creating a Vulkan application significantly improved understanding of GPU pipelines, memory management and rendering systems.
 </p>
 
 <p>
-Additionally, the project strengthened C++ knowledge, including pointers, destructors, and header file structures.
+Additionally, the project strengthened C++ knowledge, including pointers, destructors and header file structures. And memory management,
 </p>
 Reflection on development
 
@@ -1020,12 +1030,6 @@ What i would do differently if i were to start over
 after this project, i will continue trying to make shadows, raytrace lighting, textured models and materials
     <!-- <li>shadow mapping: render the scene from the light's perspective to create a depth map, then use that depth map in the main render pass to determine shadowed areas</li> -->
 
-challenges:
-<ul>
-    <li>Complex Vulkan setup</li>
-    <li>Swap chain recreation during window resize</li>
-    <li>Synchronization and command buffers</li>
-</ul>
 
 
 <h3>4.1 | Why Vulkan is better</h3>
@@ -1041,7 +1045,7 @@ Instead, commands are recorded into command buffers and submitted to GPU queues.
     <li>Reusable command buffers</li>
 </ul>
 <p>You don’t bind buffers/images directly to the pipeline You bind a descriptor set that contains them</p>
-<p>Instead of this (OpenGL style):
+<p>Instead of this (OpenGL):
 bind buffer A
 bind texture B
 bind buffer C
