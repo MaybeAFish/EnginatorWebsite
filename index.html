@@ -148,7 +148,7 @@ The potential performance and scalability benefits are becoming harder for big c
 </div>
 
 <p>
-It is important to note, while Vulkan offers higher performance potential, incorrect usage can result in even worse performance due to its really complex nature.
+It is important to note that while Vulkan can offer higher performance potential, using it incorrectly can easily cause worse performance due to its complexity.
 </p>
 
 <h3>1.3 | Project Scope (MoSCoW)</h3>
@@ -872,15 +872,15 @@ gameObjects.emplace(gameObject.getId(), std::move(gameObject));
 
 
 <h2>3 | Lighting System</h2>
-without any lighting at all, it would just be the raw vertex colors. Unless the model has no colors, in which case it would just be white:
+<p>
+My current Without any lighting, objects would only display their raw vertex colors. If a model does not contain color data, it will appear fully white looking very bland (like the vase object shown earlier).
+</p>
 
 
 <h3>3.1 | Lighting in games</h3>
 
-<h3>3.2 | Ambient lighting</h3>
-Ambient lighting assumes an object recieves a tiny bit of light from every direction
 
-<h3>3.3 | Directional lighting</h3>
+<h3>3.2 | Directional lighting</h3>
 
 This was my first attempt at directional lighting, which is a type of lighting that simulates light coming from a specific direction, like sunlight. It is calculated based on the angle between the light direction and the surface normal of the object being lit. The intensity of the light on the surface is determined by the cosine of this angle, which means that surfaces facing directly towards the light will be fully lit, while surfaces facing away will be in shadow.
 
@@ -929,7 +929,11 @@ https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading
 
 by using the fragment shader instead, it is
 
-<h3>3.3 | Point lights</h3>
+
+<h3>3.3 | Ambient lighting</h3>
+Ambient lighting assumes an object recieves a tiny bit of light from every direction
+
+<h3>3.4 | Point lights</h3>
 
 
 
@@ -949,15 +953,18 @@ I believe this is because the normals of the floor are facing downwards, which c
 
 Something else, the light isnt based on raytracing. it goes through walls and stuff, which is not how point lights are supposed to work. I will have to implement shadow mapping to fix this, which is a technique that allows for shadows to be cast by objects in the scene. This will involve rendering the scene from the perspective of the light source to create a depth map, and then using that depth map in the main render pass to determine which areas are in shadow.
 
-<h3>3.4 | Light color</h3>
+<h3>3.5 | Light color</h3>
 Changing the color of the light is deadass as easy as just multiplying the value
 
-<h3>3.4 | Multiple point lights</h3>
-<h3>3.5 | Performance considerations</h3>
-<h3>3.6 | Challenges & limitations</h3>
+<h3>3.6 | Multiple point lights</h3>
+<h3>3.7 | Performance considerations</h3>
 
 
-
+<div class="media">
+    <video controls>
+        <source src="videos/4.mp4" type="video/mp4">
+    </video>
+</div>
 
 <h2>4 | Conclusion</h2>
 <p>
