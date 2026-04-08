@@ -107,7 +107,7 @@
 
 <h1>Development of a Vulkan 3D Rendering Environment with Real-Time Lighting</h1>
 
-<img src="images/rendering/5.png" alt="Engine" />
+<img src="images/rendering/0.png" alt="Engine" />
 
 <h2>1 | Introduction</h2>
 
@@ -292,13 +292,13 @@ Although many Vulkan projects use CMake to build the project, this project uses 
         <div class="title">EnginatorWindow</div>
     </div>
 
-    <div class="class" style="left: 500px; top: 550px;" data-desc="Handles Vulkan device setup and memory management.">
+    <!-- <div class="class" style="left: 500px; top: 550px;" data-desc="Handles Vulkan device setup and memory management.">
         <div class="title">EnginatorDevice</div>
     </div>
 
     <div class="class" style="left: 750px; top: 550px;" data-desc="Handles rendering pipeline, swap chain, and frame management.">
         <div class="title">EnginatorRenderer</div>
-    </div>
+    </div> -->
 
     <!-- Game Objects / Systems -->
     <div class="class" style="left: 500px; top: 800px;" data-desc="Represents objects in the game world.">
@@ -461,7 +461,7 @@ private:
 void Editor::run() {
     while (!glfwWindowShouldClose(enginatorWindow.window())) {
         glfwPollEvents();
-        // This is basically the main loop of the application where the render system and update loops will be located
+        // My render system and update loops will be located here
     }
 }
 </code></pre>
@@ -492,17 +492,19 @@ A graphics pipeline is a sequence of steps that transforms 3D model data (vertic
 
 <h4>2.3.2 | Enginator renderer</h4>
 <p>
-The EnginatorRenderer acts as the coordinator of the rendering process. It does not execute pipeline stages itself, but controls when and how the GPU runs them by recording commands (e.g., draw these specific vertices or bind these textures) into "command buffers", which is information that will run through the pipeline.
+The EnginatorRenderer acts as the coordinator of the rendering process. It does not execute the previously mentioned pipeline stages itself, but controls when and how the GPU runs those stages by recording commands (e.g., draw these specific vertices or bind these textures) into "command buffers", which is information that will run through the pipeline.
 </p>
 <p>
-At the start of each frame, which is when the Editor calls the renderer's <code>beginFrame()</code> method, an available image is acquired from the "swap chain". This image (the "render target") will eventually be drawn on the screen near the end of the frame, but before being displayed we need to tell the GPU how to render the scene on to that image.
+At the start of each frame, which is when the Editor calls the renderer's <code>beginFrame()</code> method, an available image is acquired from the "swap chain". This image (also known as a "render target") will eventually be drawn on the screen near the end of the frame, but before being displayed we need to tell the GPU how to render the scene on to that image.
 </p>
 <pre><code class="language-cpp">
 auto result = enginatorSwapChain->acquireNextImage(&currentImageIndex);
 vkBeginCommandBuffer(commandBuffer, &beginInfo);
 </code></pre>
+    <p class="caption">"result" being the acquired render target</p>
+
 <p>
-The benefit of using a swap chain (as opposed to just rendering directly to the screen) is that it allows for double or triple buffering, which is when multiple images are used to store upcoming frames. This can improve performance (because the GPU can already start working on one frame while the display is showing another) and reduce "visual artifacts" (like screen tearing or flickering). Instead of rendering directly to the screen, frames are rendered to these images and presented in sequence. This makes sure that only fully rendered frames are displayed.
+The benefit of using a swap chain (as opposed to just rendering directly to the screen) is that it allows for double or triple buffering, which is when multiple images are used to store upcoming frames. This can improve performance (because the GPU can already start working on one frame while the display is showing another) and reduce "visual artifacts" (like screen tearing or flickering). This is done by rendering frames to these images and presenting them in sequence. This makes sure that only fully rendered frames are displayed.
 </p>
 <div class="media">
     <img src="images/triplebuffer1.png" alt="No Triple Buffering">
@@ -513,13 +515,20 @@ The benefit of using a swap chain (as opposed to just rendering directly to the 
     <p class="caption">In this case, triple buffering is always providing the GPU with a frame to work on:(Brendan Galea (2), 2020)</p>
 </div>
 <p>
-Next, a render pass (a collection of operations that demand the GPU how it should render the scene, like clearing the color or depth buffer or setting the viewport) is started. This step defines which framebuffer (the swap chain image) will be used and prepares the pipeline for drawing.
+There are some edge cases to consider when using a swap chain. For example, if the window is resized, the swap chain must be recreated to match the new window sizes. The code would otherwise crash when attempting to use the swap chain images, as they would no longer match the window dimensions.
 </p>
 <pre><code class="language-cpp">
-vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
-                     VK_SUBPASS_CONTENTS_INLINE);
-vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || enginatorWindow.wasWindowResized()) {
+    enginatorWindow.resetWindowResizedFlag();
+    recreateSwapChain();
+}
+</code></pre>
+
+<p>
+After acquiring the image, a render pass (a collection of operations that demand the GPU how it should render the scene, like clearing the color- or depth buffer or setting the viewport) is started. This step defines which framebuffer (the swap chain image) will be used and prepares the pipeline for drawing.
+</p>
+<pre><code class="language-cpp">
+vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 </code></pre>
 <p>
 During this render pass, draw commands are recorded. These commands will later trigger execution of the vertex and fragment stages on the GPU.
@@ -533,22 +542,12 @@ vkEndCommandBuffer(commandBuffer);
 enginatorSwapChain->submitCommandBuffers(&commandBuffer, &currentImageIndex);
 </code></pre>
 
-<p>
-If the window is resized, the swap chain must be recreated to match the new window sizes. The code would otherwise crash because the swap chain images would no longer match the window dimensions.
-</p>
-<pre><code class="language-cpp">
-if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || enginatorWindow.wasWindowResized()) {
-    enginatorWindow.resetWindowResizedFlag();
-    recreateSwapChain();
-}
-</code></pre>
-
 
 
 
 <h3>2.4 | Render System</h3>
 <p>
-The SimpleRenderSystem class is responsible for recording the actual draw commands that will be executed by the GPU. It defines how game objects are rendered, including which shaders to use, how to bind vertex data and how to pass transformation and lighting data to the GPU.
+To actually get something to draw on the screen, I will be using the SimpleRenderSystem class, which is responsible for recording the actual draw commands that will be executed by the GPU in the command buffer. It defines how game objects are rendered, including which shaders to use, how to bind vertex data and how to pass transformation and lighting data to the GPU.
 </p>
 
 <pre><code class="language-cpp">
@@ -579,9 +578,6 @@ enginatorPipeline = std::make_unique<EnginatorPipeline>(
       enginatorDevice, "shaders/triangle.vert.spv", "shaders/triangle.frag.spv",
       pipelineConfig);
 </code></pre>
-<p>
-Shaders are written in GLSL, but have to be compiled to SPIR-V before Vulkan can use them (the .spv extension). SPIR-V is a binary intermediate language for shaders, designed to be more efficient for the GPU to execute.
-</p>
 
 <p>This EnginatorPipeline class passes the shader code to the Vulkan API to create shader modules, which will be used in the future when draw commands are executed.</p>
 
@@ -608,9 +604,8 @@ void EnginatorPipeline::createShaderModule(const std::vector<char> &code,
 }
 </code></pre>
 
-<!--  -->
 <p>
-The vertex shader is responsible for transforming the vertices from model space to clip space, and passing any necessary data to the fragment shader. In this example, the vertex shader takes in vertex positions and colors, applies a transformation to the positions, and passes the colors to the fragment shader.
+The vertex shader is responsible for transforming the vertices from model space to clip space (the coordinate system after the projection matrix has been applied), and passing any necessary data to the fragment shader. The vertex shader will for now simply take in vertex positions and colors, applying a transformation to each vertex position and passing the colors to the fragment shader.
 </p>
 
 <pre><code class="language-hlsl">
@@ -627,26 +622,26 @@ void main() {
 }
 </code></pre>
 
-The fragment shader will for now force each fragment to be red
-
-<pre><code class="language-hlsl>">
+The fragment shader will take in the interpolated colors from the vertex shader and output a final color for each fragment. For now, it will simply output a solid red color for every fragment, ignoring the input color:
+<pre><code class="language-hlsl">
 #version 450
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 0) out vec4 outColor;
 
 void main() {
-  outColor = vec4(fragColor, 1.0);
+    outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 </code></pre>
 
-
 <p>
-Shaders are written in GLSL which have to be compiled to SPIR-V before Vulkan can use them. SPIR-V is a binary intermediate language for shaders, designed to be more efficient for the GPU to execute.
+The shaders are written in GLSL, but they have to be compiled to SPIR-V (.spv extension) before Vulkan can use them. SPIR-V is a binary intermediate language for shaders, designed to be more efficient for the GPU to execute (Khronos Group, n.d.).
 </p>
 
+
+
 <p>
-When the renderGameObjects() method is called, the command buffer (that was previously made by the renderer) is passed to the GPU with instructions on how to render the game objects.
+When the renderGameObjects() method is called, the command buffer is passed to the GPU with these instructions on how to render the game objects.
 </p>
 <pre><code class="language-cpp">
 void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
@@ -657,8 +652,8 @@ void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
                           &frameInfo.globalDescriptorSet, 0, nullptr);
 
   for (auto &keyValue : frameInfo.gameObjects) {
-    // Every game object simply has a model (which contains the vertex and index buffers) and a transform (which contains the position, rotation and scale of the object). 
-    // The render system iterates through all game objects and renders them one by one.
+    // Every game object simply has a model component(with a vertex- and index buffer) and a transform (which contains the position, rotation and scale of the object). 
+    // The render system iterates through all the game objects in the scene to render them
 
     auto &gameObject = keyValue.second;
     if (gameObject.model == nullptr)
@@ -673,7 +668,7 @@ void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
                        VK_SHADER_STAGE_VERTEX_BIT |
                            VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(SimplePushConstantData), &push);
-    // These push constants are a small amount of data that can be passed directly to the shaders without the need for a buffer. They are really great for frequently changing data, such as transformation matrices, that need to be updated for each draw call.
+    // These push constants are a small amount of data that can be passed directly to the shaders without the need for a buffer. THey are great for frequently changing data like transformations
 
     gameObject.model->bind(frameInfo.commandBuffer);
     gameObject.model->draw(frameInfo.commandBuffer);
@@ -716,9 +711,9 @@ void EnginatorModel::draw(VkCommandBuffer commandBuffer) {
 
 <pre><code class="language-cpp">
     std::vector<EnginatorModel::Vertex> triangleVertices{
-        {{-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {}},
-        {{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {}, {}},
-        {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {}, {}},
+        {{-1.0f, 0.0f, 0.0f}},
+        {{0.0f, -1.0f, 0.0f}},
+        {{1.0f, 0.0f, 0.0f}},
     };
     std::vector<uint32_t> triangleIndices{0, 1, 2};
 
@@ -732,13 +727,13 @@ void EnginatorModel::draw(VkCommandBuffer commandBuffer) {
 <p>Which renders the following image:</p>
 <div class="media">
     <img src="images/rendering/1.png" alt="Triangle render">
-    <p class="caption">First rendered triangle</p>
+    <p class="caption">Yesssir</p>
 </div>
 
 <p>This confirms that I was succesful in setting up the basic rendering pipeline. Getting through this part feels really good because every change from now on will be visually verifiable.</p>
 
 <h3>2.5.2 | Multicolored triangle</h3>
-<p>Barycentric coordinates are a way to represent a point inside a triangle as a weighted average of the triangle's vertices colors.</p>
+<p>Barycentric coordinates are a coordinate system used in computer graphics to represent the position of a point within a triangle. They are defined as three values (u, v, w) that represent the relative weights of the triangle's vertices. The sum of these values is always equal to 1, and they can be used to interpolate vertex attributes (like color) across the surface of the triangle. This can be used to create smooth color gradients across the surface of a triangle.</p>
 
 <p>This can easily be done in the fragment shader by setting outColor to the interpolated fragment color:</p>
 
@@ -751,6 +746,27 @@ layout (location = 0) out vec4 outColor;
 void main() {
   outColor = vec4(fragColor, 1.0);
 }
+</code></pre>
+
+<p>
+And ofcourse by assigning a different color to each vertex in the vertex data:
+</p>
+<pre><code class="language-cpp">
+    // Or in this case, a pentagon
+    std::vector<EnginatorModel::Vertex> vertices{
+        // Triangle 1
+        {{0.0f, 0.5f}, {1.0f, 0.0f, 0.0f}},       // red
+        {{0.475f, 0.1545f}, {0.0f, 1.0f, 0.0f}},  // green
+        {{0.293f, -0.4045f}, {0.0f, 0.0f, 1.0f}}, // blue
+        // Triangle 2
+        {{0.0f, 0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.293f, -0.4045f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.293f, -0.4045f}, {1.0f, 1.0f, 0.0f}}, // yellow
+        // Triangle 3
+        {{0.0f, 0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{-0.293f, -0.4045f}, {1.0f, 1.0f, 0.0f}},
+        {{-0.475f, 0.1545f}, {1.0f, 0.0f, 1.0f}} // magenta
+    };
 </code></pre>
 
 <div class="media">
@@ -771,8 +787,8 @@ gameObject.transform.rotation.x += 0.005f;
     </video>
 </div>
 
-<h3>2.5.4 | Orthographic vs Perspective</h3>
-<p></p>
+<h3>2.5.4 | Perspective camera & input</h3>
+<!-- <p>Orthographic projection preserves the size of objects regardless of their distance from the camera, while perspective projection makes distant objects appear smaller.</p> -->
 
 
 <div class="media">
@@ -783,10 +799,10 @@ gameObject.transform.rotation.x += 0.005f;
 
 <h3>2.5.5 | Model loader</h3>
 <p>
-I decided to use tinyobjloader to load .obj (WaveFront) files, which is a simple header only library for loading .obj models. It supports loading vertex data, index data, colors, UVs and normals.
+I used the tinyobjloader library to load .obj files. It supports loading vertex data, index data, colors, UVs and normals.
 </p>
 
-<p>I only want to try and load the vertex and index data for now. All I have to do is extract it from an .obj file and put it in the model's vertex and index buffers.</p>
+<p>I only want to try and load the vertex and index data for now. All I have to do is extract it from an .obj file using the LoadObj method and make use of the attributes (like vertex positions) when creating the model.</p>
 
 <p>I created the following method in the EnginatorModel class:</p>
 
@@ -856,14 +872,42 @@ gameObjects.emplace(gameObject.getId(), std::move(gameObject));
 
 
 <h2>3 | Lighting System</h2>
+without any lighting at all, it would just be the raw vertex colors. Unless the model has no colors, in which case it would just be white:
+
+
+<h3>3.1 | Lighting in games</h3>
+
+<h3>3.2 | Ambient lighting</h3>
 Ambient lighting assumes an object recieves a tiny bit of light from every direction
+
+<h3>3.3 | Directional lighting</h3>
+
+This was my first attempt at directional lighting, which is a type of lighting that simulates light coming from a specific direction, like sunlight. It is calculated based on the angle between the light direction and the surface normal of the object being lit. The intensity of the light on the surface is determined by the cosine of this angle, which means that surfaces facing directly towards the light will be fully lit, while surfaces facing away will be in shadow.
+
+This was done in the vertex shader which makes it very blocky.
+<div class="media">
+    <img src="images/rendering/6.png" alt="Nicky well render">
+</div>
+
+
 <p>
 Uniform buffers (UBOs) contain data that remains constant for many vertices or fragments, such as transformation matrices, camera parameters or lighting information. These can be used to reduce draw calls.
 </p>
 Directional light 1 direction
-<h3>3.1 | Lighting in games</h3>
-<h3>3.2 | Ambient lighting</h3>
-<h3>3.2 | Directional lighting</h3>
+
+
+<div class="media">
+    <img src="images/rendering/6.png" alt="Nicky well render">
+</div>
+
+For reference, this is what it would look like without ambient lighting
+<div class="media">
+    <img src="images/rendering/7.png" alt="Nicky well render">
+</div>
+
+
+
+
 
 A friend gave me her model of a well;
 <div class="media">
@@ -871,10 +915,9 @@ A friend gave me her model of a well;
     <p class="caption">(This is in Blender)</p>
 </div>
 
-Which seemed really nice to try my directional lighting on
+Which I thought it'd be cool to use my directional lighting on:
 <div class="media">
     <img src="images/rendering/8.png" alt="Nicky well render">
-    <p class="caption">(This is in Blender)</p>
 </div>
 
 
@@ -887,6 +930,27 @@ https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading
 by using the fragment shader instead, it is
 
 <h3>3.3 | Point lights</h3>
+
+
+
+so i got them to work, but they worked weird with the floor of the well
+
+<div class="media">
+    <img src="images/rendering/9.png" alt="Nicky well render">
+</div>
+
+The light would only work on the floor of the well if the light was underneath the well, which is not how point lights are supposed to work. The light should affect the floor regardless of its position, as long as it's within the light's radius.
+
+<div class="media">
+    <img src="images/rendering/10.png" alt="Nicky well render">
+</div>
+
+I believe this is because the normals of the floor are facing downwards, which causes the lighting calculations to be incorrect. I will have to investigate this further and see if I can fix it by adjusting the normals or by implementing backface culling.
+
+Something else, the light isnt based on raytracing. it goes through walls and stuff, which is not how point lights are supposed to work. I will have to implement shadow mapping to fix this, which is a technique that allows for shadows to be cast by objects in the scene. This will involve rendering the scene from the perspective of the light source to create a depth map, and then using that depth map in the main render pass to determine which areas are in shadow.
+
+<h3>3.4 | Light color</h3>
+Changing the color of the light is deadass as easy as just multiplying the value
 
 <h3>3.4 | Multiple point lights</h3>
 <h3>3.5 | Performance considerations</h3>
@@ -935,8 +999,7 @@ Instead, commands are recorded into command buffers and submitted to GPU queues.
     <li>Explicit GPU memory management</li>
     <li>Reusable command buffers</li>
 </ul>
-<p>👉 You don’t bind buffers/images directly to the pipeline
-👉 You bind a descriptor set that contains them</p>
+<p>You don’t bind buffers/images directly to the pipeline You bind a descriptor set that contains them</p>
 <p>Instead of this (OpenGL style):
 bind buffer A
 bind texture B
@@ -959,20 +1022,34 @@ draw</p>
 
 
 <!-- SOURCES -->
+<p>
 Prism.js was used for code snippet syntax highlighting. Very useful. https://prismjs.com/download#themes=prism&languages=markup+css+clike+javascript+c+csharp+cpp+hlsl
+</p>
 
+<p>
 Silicon Studio. (October 14, 2016). <i>Xenko game engine announces Vulkan graphics API implementation
 </i>. https://www.siliconstudio.co.jp/en/news/pressreleases/2016/en1610xenko/
+</p>
 
+<p>
 Minecraft. (February 18, 2026). <i>Another step towards vibrant visuals for Java Edition</i>. https://www.minecraft.net/en-us/article/another-step-towards-vibrant-visuals-for-java-edition
+</p>
 
+<p>
 Vulkan Tutorial. (n.d.). <i>Vulkan Tutorial: Introduction</i>. https://vulkan-tutorial.com/
-
+</p>
+<p>
 Meta Horizon. (January 29, 2026). <i>Graphics Rendering Pipeline</i>. https://developers.meta.com/horizon/design/design-graphic-rendering-pipeline/
-
+</p>
+<p>
+Khronos Group. (n.d.). <i>SPIR: The Standard IR for Parallel Compute and Graphics</i>. https://www.khronos.org/spirv/
+</p>
+<p>
 Brendan Galea (1). (November 20, 2020). <i>Graphics Pipeline Overview - Vulkan Game Engine Tutorial 02</i>. https://www.youtube.com/watch?v=_riranMmtvI
-
+</p>
+<p>
 Brendan Galea (2). (January 15, 2021). <i>Swap Chain Overview - Vulkan Game Engine Tutorial 05 part 1</i>. https://www.youtube.com/watch?v=IUYH74MqxOA
+</p>
 
 
 <div class="media">
