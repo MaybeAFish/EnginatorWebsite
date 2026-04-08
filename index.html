@@ -870,24 +870,92 @@ gameObjects.emplace(gameObject.getId(), std::move(gameObject));
     <img src="images/rendering/4.png" alt="ModelsB">
 </div>
 
-
 <h2>3 | Lighting System</h2>
 <p>
-My current Without any lighting, objects would only display their raw vertex colors. If a model does not contain color data, it will appear fully white looking very bland (like the vase object shown earlier).
+My current shaders draw the vertices at face value, directly drawing each pixel's color to be whatever the vertex wants to be (which is white when the vertex has no color data, check the vase object shown earlier). 
+</p>
+<p>However, The fragment shader should be the one to decide what the actual pixel's color will be, taking lighting calculations into account.</p>
+
+<p>"Lighting Calculations" is a broad topic as there are many different techniques for simulating how light interacts with surfaces in a 3D environment.</p>
+
+
+<h3>3.1 | Directional lighting</h3>
+<p>
+Directional Lighting simulates light coming from a specific direction, like sunlight. This can be calculated based on the angle between the light direction and the surface normal. Which is done kinda easy:</li>
+</p>
+<pre><code class="language-hlsl">
+#version 450
+
+layout (location = 0) in vec3 fragColor;
+layout (location = 1) in vec3 fragNormal;
+
+layout (location = 0) out vec4 outColor;
+
+void main() {
+    vec3 lightDirection = normalize(vec3(1.0, -1.0, -1.0));
+
+    float difference = max(dot(fragNormal, lightDirection), 0.0);
+    outColor = vec4(difference * fragColor, 1.0);
+}
+</code></pre>
+
+And boom:
+<div class="media">
+    <img src="images/rendering/5.png" alt="First light">
+</div>
+
+<p>
+This works, but it's blocky. The lighting is only calculated at the vertices, so the pixels in between are just interpolating the vertex colors, which is not how lighting should work. 
 </p>
 
-
-<h3>3.1 | Lighting in games</h3>
-
-
-<h3>3.2 | Directional lighting</h3>
-
-This was my first attempt at directional lighting, which is a type of lighting that simulates light coming from a specific direction, like sunlight. It is calculated based on the angle between the light direction and the surface normal of the object being lit. The intensity of the light on the surface is determined by the cosine of this angle, which means that surfaces facing directly towards the light will be fully lit, while surfaces facing away will be in shadow.
-
-This was done in the vertex shader which makes it very blocky.
+<p>This means I have created flat shading:</p>
 <div class="media">
-    <img src="images/rendering/6.png" alt="Nicky well render">
+    <img src="images/shading.png" alt="Flat shading">
+    <p class="caption">(Blender Stack Exchange, 2021)</p>
 </div>
+
+<p>
+This happened because I accidentally put the lighting calculations in the vertex shader. To fix this, I just moved them to the fragment shader, which creates per-pixel lighting instead:
+</p>
+
+<div class="media">
+    <img src="images/rendering/7.png" alt="Second light">
+</div>
+
+A friend gave me her model of a well;
+<div class="media">
+    <img src="images/Nicky_Well.png" alt="Nicky well">
+    <p class="caption">(This is in Blender)</p>
+</div>
+
+So I thought it'd be cool to use my directional lighting on it:
+<div class="media">
+    <img src="images/rendering/8.png" alt="Nicky well render">
+</div>
+
+This looks very cool! In my, very honest, definitely NON-biased, opinion.
+
+
+
+
+<div class="media">
+    <img src="images/shading.png" alt="Gourard shading">
+</div>
+
+
+<h3>3.3 | Ambient lighting</h3>
+Ambient lighting assumes an object recieves a tiny bit of light from every direction
+
+<div class="media">
+    <img src="images/rendering/6.png" alt="Second light">
+</div>
+
+
+
+
+
+<h3>3.4 | Point lights</h3>
+    <li>Point Lighting: Simulates light emanating from a single point in all directions.</li>
 
 
 <p>
@@ -896,44 +964,6 @@ Uniform buffers (UBOs) contain data that remains constant for many vertices or f
 Directional light 1 direction
 
 
-<div class="media">
-    <img src="images/rendering/6.png" alt="Nicky well render">
-</div>
-
-For reference, this is what it would look like without ambient lighting
-<div class="media">
-    <img src="images/rendering/7.png" alt="Nicky well render">
-</div>
-
-
-
-
-
-A friend gave me her model of a well;
-<div class="media">
-    <img src="images/Nicky_Well.png" alt="Nicky well">
-    <p class="caption">(This is in Blender)</p>
-</div>
-
-Which I thought it'd be cool to use my directional lighting on:
-<div class="media">
-    <img src="images/rendering/8.png" alt="Nicky well render">
-</div>
-
-
-<div class="media">
-    <img src="images/shading.png" alt="Gourard shading">
-</div>
-gourard shading
-https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading-material
-
-by using the fragment shader instead, it is
-
-
-<h3>3.3 | Ambient lighting</h3>
-Ambient lighting assumes an object recieves a tiny bit of light from every direction
-
-<h3>3.4 | Point lights</h3>
 
 
 
@@ -1060,6 +1090,10 @@ Brendan Galea (1). (November 20, 2020). <i>Graphics Pipeline Overview - Vulkan G
 </p>
 <p>
 Brendan Galea (2). (January 15, 2021). <i>Swap Chain Overview - Vulkan Game Engine Tutorial 05 part 1</i>. https://www.youtube.com/watch?v=IUYH74MqxOA
+</p>
+
+<p>
+Blender Stack Exchange. (February 10, 2021). <i>How to make a gouraud shading material</i>. https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading-material
 </p>
 
 
