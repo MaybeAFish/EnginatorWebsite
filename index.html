@@ -116,33 +116,39 @@
 The objective of this project is to develop a real-time 3D rendering environment using the Vulkan graphics API, with a primary focus on implementing dynamic lighting through point lights.
 </p>
 <p>
-The goal is to approximate the visual result shown in a reference scene created in Unity. This reference serves as a target for both visual quality and feature completeness, guiding the technical decisions made throughout the project.
+The goal is to try to remake the visual result shown in the following reference scene created in Unity. This reference serves as a target for both visual quality and feature completeness, guiding the technical decisions made throughout the project:
 </p>
 <img src="images/goal.png" alt="Unity reference scene" />
 
 <h3>1.2 | Motivation and personal interest</h3>
 <p>
-Vulkan is a modern, low-level graphics API that provides explicit control over GPU operations. Unlike higher-level APIs such as OpenGL, Vulkan requires manual management of memory, synchronization and command submission. While this increases complexity, it also offers significantly more control and potentially big performance benefits.
+Vulkan is a modern, low-level graphics API that provides explicit control over GPU operations. Unlike higher-level APIs such as OpenGL, Vulkan is hella more difficult as it requires manual management of memory, synchronization and command submission. While this increases complexity, it also offers significantly more control and potentially very big performance benefits.
 </p>
 <p>
-My primary motivation for choosing Vulkan is to gain a deeper understanding and become better in low-level graphics programming. Additionally, this project serves as an opportunity to improve my competency in C++, a language I am not yet fully comfortable with but want to master further.
+My primary motivation for choosing Vulkan is to gain a deeper understanding and becoming better in low-level graphics programming. Additionally, this project serves as an opportunity to improve my competency in C++, a language I am not yet fully comfortable with but want to master further.
 </p>
 <p>
 Another reason for selecting Vulkan is its growing relevance within the industry. Vulkan is designed with modern hardware in mind and is widely considered a futureproof API due to its performance focused design and cross platform support (Windows, Mac and Linux).
 </p>
+<div class="media">
+    <img src="images/vulkan.png" alt="Vulkan">
+    <p class="caption">(Silicon Studio, 2016)
+</p>
+</div>
 <p>
 Even Minecraft is planning on changing their 15 year old OpenGL based engine to be based on Vulkan instead (<a href="https://www.minecraft.net/en-us/article/another-step-towards-vibrant-visuals-for-java-edition" target="_blank">Minecraft, 2026</a>). 
 The potential performance and scalability benefits are becoming harder for big companies to ignore, making it worth the time to invest in learning this tech:
 </p>
 
-Comparisons
-<img src="images/goal.png" alt="Unity reference scene" />
-<img src="images/goal.png" alt="Unity reference scene" />
-<img src="images/goal.png" alt="Unity reference scene" />
-<img src="images/goal.png" alt="Unity reference scene" />
+<div class="media">
+<p>Here are some comparison videos:</p>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BNHr0jJ4q3E?si=Db_J3B8p8LuSLV8g&amp;start=697" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hvdAVsjrQRM?si=Lax1hb7I8dTgvSk_&amp;start=53" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
 
 <p>
-It is important to note, while Vulkan offers higher performance potential, incorrect usage can result in even worse performance due to its complex nature.
+It is important to note, while Vulkan offers higher performance potential, incorrect usage can result in even worse performance due to its really complex nature.
 </p>
 
 <h3>1.3 | Project Scope (MoSCoW)</h3>
@@ -165,6 +171,8 @@ To recreate the Unity reference scene, I defined the following requirements usin
             <li>Swap chain</li>
             <li>Render pass and framebuffers</li>
             <li>Graphics pipeline creation</li>
+            <li>Vertex shader</li>
+            <li>Fragment shader</li>
         </ul>
     </li>
     <li>Geometry
@@ -237,14 +245,13 @@ Vulkan cannot operate independently. It requires several supporting libraries to
 </p>
 
 <ul>
-    <li><strong>GLFW</strong> for window creation and input handling (keyboard, mouse).</li>
-    <li><strong>GLM</strong> for math related stuff like vectors, matrices, and quaternion math utilities for 3D graphics transformations.</li>
+    <li><strong>GLFW</strong> for window creation and input.</li>
+    <li><strong>GLM</strong> for math related stuff like vectors, matrices and quaternion math utilities for 3D graphics transformations.</li>
 </ul>
 
 <p>
-The recommended development environment is C++17 or later (<a href="https://vulkan-tutorial.com/" target="_blank">Vulkan Tutorial, n.d.</a>), with a compiler that supports Vulkan, such as MSVC (Microsoft Visual C++) on Windows or Clang/GCC on Linux. Before I could use Vulkan, I had to add the Vulkan SDK to my system's PATH so the project can locate its headers and libraries.
+The recommended development environment is C++17 or later (<a href="https://vulkan-tutorial.com/" target="_blank">Vulkan Tutorial, n.d.</a>), with a compiler that supports Vulkan, such as MSVC (Microsoft Visual C++) on Windows or Clang/GCC on Linux. And to even use the Vulkan API itself, I had to add the Vulkan SDK to my system's PATH so the project can locate its headers and libraries.
 </p>
-
 <p>
 Although many Vulkan projects use CMake to build the project, this project uses Visual Studio/MSBuild tasks for simplicity. I made a <code>tasks.json</code> configuration to build the project (ctrl + shift + B), and I made a <code>launch.json</code> configuration to run the built executable (F5). I did it this way so my project requires one less dependency (CMake).
 </p>
@@ -724,7 +731,7 @@ void EnginatorModel::draw(VkCommandBuffer commandBuffer) {
 
 <p>Which renders the following image:</p>
 <div class="media">
-    <img src="images/triangle.png" alt="Triangle render">
+    <img src="images/rendering/1.png" alt="Triangle render">
     <p class="caption">First rendered triangle</p>
 </div>
 
@@ -858,6 +865,22 @@ Directional light 1 direction
 <h3>3.2 | Ambient lighting</h3>
 <h3>3.2 | Directional lighting</h3>
 
+A friend gave me her model of a well;
+<div class="media">
+    <img src="images/Nicky_Well.png" alt="Nicky well">
+    <p class="caption">(This is in Blender)</p>
+</div>
+
+Which seemed really nice to try my directional lighting on
+<div class="media">
+    <img src="images/rendering/8.png" alt="Nicky well render">
+    <p class="caption">(This is in Blender)</p>
+</div>
+
+
+<div class="media">
+    <img src="images/shading.png" alt="Gourard shading">
+</div>
 gourard shading
 https://blender.stackexchange.com/questions/219116/how-to-make-a-gouraud-shading-material
 
@@ -936,7 +959,10 @@ draw</p>
 
 
 <!-- SOURCES -->
-Prism.js was used for syntax highlighting. Very useful. https://prismjs.com/download#themes=prism&languages=markup+css+clike+javascript+c+csharp+cpp+hlsl
+Prism.js was used for code snippet syntax highlighting. Very useful. https://prismjs.com/download#themes=prism&languages=markup+css+clike+javascript+c+csharp+cpp+hlsl
+
+Silicon Studio. (October 14, 2016). <i>Xenko game engine announces Vulkan graphics API implementation
+</i>. https://www.siliconstudio.co.jp/en/news/pressreleases/2016/en1610xenko/
 
 Minecraft. (February 18, 2026). <i>Another step towards vibrant visuals for Java Edition</i>. https://www.minecraft.net/en-us/article/another-step-towards-vibrant-visuals-for-java-edition
 
