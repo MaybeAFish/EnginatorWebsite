@@ -1,3 +1,3 @@
 ﻿# Enginator
 
-Explanation code of the engine
+Explanation code of the Enginator engine
